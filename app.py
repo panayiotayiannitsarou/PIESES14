@@ -1,31 +1,12 @@
-# 🔵 Ψηφιακό Πρόγραμμα για Δίκαιη Κατανομή Μαθητών στην Α' Δημοτικού
-# ------------------------------------------------------------
-# Περιγραφή:
-# Το πρόγραμμα υλοποιεί δίκαιη κατανομή μαθητών σε τμήματα Α' Δημοτικού.
-# Υποστηρίζει 2 ή περισσότερα τμήματα, με μέγιστο 25 μαθητές ανά τάξη
-# και διαφορά πληθυσμού έως 1 μεταξύ των τμημάτων.
-# Τα δεδομένα φορτώνονται και εξάγονται μέσω αρχείων Excel.
-# Γλώσσα προγραμματισμού: Python
-# Χρήση πλατφορμών: GitHub για αποθήκευση, Streamlit για προβολή/χρήση
-
-# ✅ ΚΩΔΙΚΟΠΟΙΗΣΗ ΠΕΔΙΩΝ
-# Φύλο: Α = Αγόρι, Κ = Κορίτσι
-# Πεδίο | Ν = Έχει / Ο = Δεν Έχει
-# Καλή Γνώση Ελληνικών         | Ν = Καλή / Ο = Όχι Καλή
-# Ικανοποιητική Μ. Ικανότητα   | Ν = Ικανοποιητική / Ο = Δυσκολία
-# Ζωηρός                      | Ν = Ζωηρός / Ο = Ήσυχος
-# Ιδιαιτερότητα               | Ν = Έχει / Ο = Δεν Έχει
-# Παιδί Εκπαιδευτικού         | Ν = Είναι / Ο = Δεν Είναι
-
-# 📌 Κάθε παιδί αξιολογείται με βάση έως 8 ταμπέλες (χαρακτηριστικά), που αντιστοιχούν στις στήλες του Excel.
-# 📌 Σε κάθε βήμα λαμβάνεται υπόψη και η πιθανή σύγκρουση πριν γίνει τοποθέτηση.
-# 📌 Τα παιδιά “κλειδώνουν” μετά την ολοκλήρωση των πρώτων τεσσάρων (4) βημάτων και δεν μετακινούνται στη συνέχεια.
-# 📌 Το μέγιστο όριο ανά τμήμα είναι 25 μαθητές και η διαφορά μεγέθους μεταξύ τμημάτων το πολύ 1 μαθητής.
 
 import streamlit as st
 import pandas as pd
 import math
 from io import BytesIO
+
+# ➤ Import Λογικής Κατανομής από άλλα αρχεία
+from assignment_logic_part_2 import apply_assignment_logic, initialize_classes
+from assignment_logic_part_3 import finalize_assignment
 
 # ➤ Κλείδωμα πρόσβασης με κωδικό
 st.sidebar.title("🔐 Κωδικός Πρόσβασης")
@@ -45,15 +26,12 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("© 2025 Παναγιώτα Γιαννίτσαρου | Όλα τα δικαιώματα διατηρούνται.")
 st.sidebar.markdown("Η χρήση της εφαρμογής επιτρέπεται μόνο με ρητή γραπτή άδεια της δημιουργού.")
 
-# ➤ Υπολογισμός Αριθμού Τμημάτων (Βήμα: Ισορροπία Πληθυσμού)
+# ➤ Υπολογισμός Αριθμού Τμημάτων
 def υπολογισμος_τμηματων(df):
-    συνολο = len(df)
-    τμηματα = math.ceil(συνολο / 25)
-    return τμηματα
+    return math.ceil(len(df) / 25)
 
-# 📌 Κουμπιά Streamlit για τις βασικές λειτουργίες
+# ➤ Streamlit interface
 st.title("📊 Κατανομή Μαθητών Α' Δημοτικού")
-
 uploaded_file = st.file_uploader("🔹 Εισαγωγή Excel αρχείου μαθητών", type=[".xls", ".xlsx"])
 
 if uploaded_file:
@@ -63,11 +41,28 @@ if uploaded_file:
 
     if st.button("🔹 Κατανομή Μαθητών"):
         num_classes = υπολογισμος_τμηματων(df)
-        st.info(f"📌 Υπολογίστηκαν {num_classes} τμήματα για {len(df)} μαθητές (μέγιστο 25 ανά τμήμα).")
-        # Εδώ θα προστεθεί η λογική κατανομής
+        st.info(f"📌 Υπολογίστηκαν {num_classes} τμήματα για {len(df)} μαθητές.")
+
+        # Βήματα 1–4
+        df = apply_assignment_logic(df, num_classes)
+
+        # Επαναφορά λιστών για Βήματα 5–8
+        classes = initialize_classes(num_classes)
+        locks = {name: True for name in df[df['ΚΛΕΙΔΩΜΕΝΟΣ'] == True]['ΟΝΟΜΑΤΕΠΩΝΥΜΟ']}
+        for _, row in df[df['ΤΜΗΜΑ'].notna()].iterrows():
+            index = int(row['ΤΜΗΜΑ'].split()[-1]) - 1
+            classes[index].append(row['ΟΝΟΜΑΤΕΠΩΝΥΜΟ'])
+
+        # Βήματα 5–8
+        warnings = finalize_assignment(df, classes, locks)
+
+        st.success("✅ Ολοκληρώθηκε η κατανομή όλων των βημάτων (1–8).")
+        if warnings:
+            st.warning("🔎 Παρατηρήσεις:
+" + "\n".join(warnings))
+        st.dataframe(df)
 
     if st.button("🔹 Εξαγωγή Excel Αποτελέσματος"):
-        # Εδώ θα προστεθεί η εξαγωγή σε Excel
         output = BytesIO()
         df.to_excel(output, index=False)
         output.seek(0)
@@ -89,13 +84,10 @@ if uploaded_file:
                 'ΙΚΑΝΟΠΟΙΗΤΙΚΗ ΜΑΘΗΣΙΑΚΗ ΙΚΑΝΟΤΗΤΑ': ('Μαθησιακά Ικανοί', lambda x: (x == 'Ν').sum()),
                 'ΟΝΟΜΑΤΕΠΩΝΥΜΟ': ('Σύνολο Μαθητών', 'count')
             })
-
             stats.columns = stats.columns.droplevel(0)
-
             total_row = stats.sum(numeric_only=True)
             total_row.name = 'Σύνολο'
             stats = pd.concat([stats, total_row.to_frame().T])
-
             st.dataframe(stats)
 
             output_stats = BytesIO()
