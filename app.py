@@ -58,7 +58,9 @@ if uploaded_file:
 
         st.success("✅ Ολοκληρώθηκε η κατανομή όλων των βημάτων (1–8).")
         if warnings:
-  st.warning("🔎 Παρατηρήσεις:\n" + "\n".join(warnings))
+if warnings:
+    st.warning("🔎 Παρατηρήσεις:\n" + "\n".join(warnings))  # ✅ Σωστό
+
 
 " + "\n".join(warnings))
         st.dataframe(df)
